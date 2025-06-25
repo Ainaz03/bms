@@ -1,14 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update
 
-from app.utils.services import assert_team_admin_or_global_admin, get_team_or_404, get_user_or_404
+from app.viewsets.TeamViewSet import TeamViewSet
 from app.core.auth import current_active_user
 from app.core.database import get_async_session
-from app.models.team import Team
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.team import TeamCreate, TeamRead, TeamMemberAdd, TeamMemberRoleUpdate
-from app.utils.codegen import generate_unique_invite_code
 
 
 router = APIRouter(prefix="/teams", tags=["Команды"])
@@ -28,26 +26,8 @@ async def create_team(
     current_user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Только администратор системы может создавать команду")
-
-    code = await generate_unique_invite_code(db)
-    team = Team(
-        name=team_in.name,
-        invite_code=code,
-        admin_id=current_user.id
-    )
-    db.add(team)
-    await db.commit()
-    await db.refresh(team)
-
-    return TeamRead(
-        id=team.id,
-        name=team.name,
-        invite_code=team.invite_code,
-        admin_id=team.admin_id,
-        members=[]
-    )
+    viewset = TeamViewSet(current_user, db)
+    return await viewset.create_team(team_in)
 
 
 @router.get(
@@ -60,16 +40,8 @@ async def read_team(
     current_user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    team = await get_team_or_404(team_id, db)
-    assert_team_admin_or_global_admin(current_user, team)
-
-    return TeamRead(
-        id=team.id,
-        name=team.name,
-        invite_code=team.invite_code,
-        admin_id=team.admin_id,
-        members=[u.id for u in team.members]
-    )
+    viewset = TeamViewSet(current_user, db)
+    return await viewset.read_team(team_id)
 
 
 @router.post(
@@ -83,12 +55,8 @@ async def add_member(
     current_user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    team = await get_team_or_404(team_id, db)
-    assert_team_admin_or_global_admin(current_user, team)
-
-    user = await get_user_or_404(member_in.user_id, db)
-    team.members.append(user)
-    await db.commit()
+    viewset = TeamViewSet(current_user, db)
+    await viewset.add_member(team_id, member_in)
 
 
 @router.delete(
@@ -102,14 +70,8 @@ async def remove_member(
     current_user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    team = await get_team_or_404(team_id, db)
-    assert_team_admin_or_global_admin(current_user, team)
-
-    user = await get_user_or_404(user_id, db)
-
-    if user in team.members:
-        team.members.remove(user)
-        await db.commit()
+    viewset = TeamViewSet(current_user, db)
+    await viewset.remove_member(team_id, user_id)
 
 
 @router.patch(
@@ -124,18 +86,6 @@ async def update_member_role(
     current_user: User = Depends(current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    team = await get_team_or_404(team_id, db)
-    assert_team_admin_or_global_admin(current_user, team)
-
-    user = await get_user_or_404(user_id, db)
-
-    if user.team_id != team_id:
-        raise HTTPException(status_code=400, detail="Пользователь не состоит в этой команде")
-
-    if user.id == team.admin_id:
-        raise HTTPException(status_code=400, detail="Нельзя менять роль администратора команды")
-
-    await db.execute(
-        update(User).where(User.id == user_id).values(role=role_in.role)
-    )
-    await db.commit()
+    viewset = TeamViewSet(current_user, db)
+    await viewset.update_member_role(team_id, user_id, role_in)
+    

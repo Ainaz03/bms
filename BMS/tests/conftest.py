@@ -1,4 +1,3 @@
-# tests/conftest.py
 import os
 from dotenv import load_dotenv
 

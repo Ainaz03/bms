@@ -14,7 +14,7 @@ async def test_create_team_success(async_client: AsyncClient, db_session):
     # 1) Подготовка: создаём в БД администратора системы
     admin = User(
         email="admin@example.com",
-        hashed_password="irrelevant",
+        hashed_password="irr elevant",
         role=UserRole.ADMIN,
         is_active=True,
         is_superuser=False,
