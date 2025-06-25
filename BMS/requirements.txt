@@ -1,0 +1,29 @@
+# Основной фреймворк и сервер
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+
+# ORM и миграции
+sqlalchemy==2.0.41
+alembic==1.16.1
+
+# Драйверы БД
+psycopg2-binary==2.9.10
+asyncpg==0.30.0
+
+# Валидация
+pydantic[email]==2.11.5
+pydantic-settings==2.9.1
+
+# Авторизация и пользователи
+fastapi-users[sqlalchemy]==14.0.1
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.5.0
+
+# Админ-панель
+sqladmin==0.20.1
+jinja2==3.1.6
+
+# Загрузка переменных окружения
+python-dotenv==1.1.0
+
+itsdangerous>=2.1
